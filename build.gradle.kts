@@ -3,7 +3,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
     `java-library`
     `maven-publish`
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
 group = "net.frankheijden.serverutils"
@@ -11,26 +11,26 @@ val dependencyDir = "${group}.dependencies"
 version = "3.5.5-SNAPSHOT"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
 }
 
 subprojects {
     apply(plugin = "java")
     apply(plugin = "maven-publish")
     apply(plugin = "checkstyle")
-    apply(plugin = "com.github.johnrengelman.shadow")
+    apply(plugin = "com.gradleup.shadow")
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     repositories {
         mavenCentral()
         maven("https://jitpack.io")
         maven("https://oss.sonatype.org/content/repositories/snapshots")
-        maven("https://papermc.io/repo/repository/maven-public/")
+        maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://libraries.minecraft.net")
     }
 
@@ -38,14 +38,18 @@ subprojects {
         implementation("cloud.commandframework:cloud-core:${VersionConstants.cloudVersion}")
         implementation("cloud.commandframework:cloud-brigadier:${VersionConstants.cloudVersion}")
         implementation("com.github.FrankHeijden:MinecraftReflection:1.0.0")
-        implementation("com.google.code.gson:gson:2.8.6")
-        implementation("me.lucko:commodore:2.2")
-        compileOnly("com.mojang:brigadier:1.0.18")
+        implementation("com.google.code.gson:gson:2.14.0")
+        compileOnly("com.mojang:brigadier:1.3.10")
+        compileOnly("org.projectlombok:lombok:1.18.48")
+        annotationProcessor("org.projectlombok:lombok:1.18.48")
+        testCompileOnly("org.projectlombok:lombok:1.18.48")
+        testAnnotationProcessor("org.projectlombok:lombok:1.18.48")
 
-        testImplementation("org.assertj:assertj-core:3.18.1")
-        testImplementation("org.junit.jupiter:junit-jupiter-api:5.7.0")
-        testImplementation("org.junit.jupiter:junit-jupiter-params:5.7.0")
-        testImplementation("org.junit.jupiter:junit-jupiter-engine:5.7.0")
+        testImplementation("org.assertj:assertj-core:3.27.7")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:5.11.4")
+        testImplementation("org.junit.jupiter:junit-jupiter-params:5.11.4")
+        testImplementation("org.junit.jupiter:junit-jupiter-engine:5.11.4")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.11.4")
     }
 
     tasks {
@@ -85,14 +89,12 @@ subprojects {
         relocate("com.google.gson", "${dependencyDir}.gson")
         relocate("dev.frankheijden.minecraftreflection", "${dependencyDir}.minecraftreflection")
         relocate("cloud.commandframework", "${dependencyDir}.cloud")
-        relocate("me.lucko.commodore", "${dependencyDir}.commodore")
         relocate("io.leangen.geantyref", "${dependencyDir}.typetoken")
         if (project.name != "Velocity") {
             relocate("net.kyori.adventure", "${dependencyDir}.adventure")
             relocate("net.kyori.examination", "${dependencyDir}.examination")
         }
         relocate("net.kyori.adventure.text.minimessage", "${dependencyDir}.adventure.text.minimessage")
-        relocate("dev.frankheijden.minecraftreflection", "${dependencyDir}.minecraftreflection")
     }
 
     publishing {
@@ -129,8 +131,6 @@ repositories {
 
 dependencies {
     implementation(project(":Common", "shadow"))
-    implementation(project(":Bukkit", "shadow"))
-    implementation(project(":Bungee", "shadow"))
     implementation(project(":Velocity", "shadow"))
     implementation("net.kyori:adventure-text-serializer-gson:${VersionConstants.adventureVersion}") {
         exclude("net.kyori", "adventure-api")
@@ -154,8 +154,6 @@ tasks.withType<ShadowJar> {
 
 fun outputTasks(): List<Task> {
     return listOf(
-        ":Bukkit:shadowJar",
-        ":Bungee:shadowJar",
         ":Velocity:shadowJar",
     ).map { tasks.findByPath(it)!! }
 }
