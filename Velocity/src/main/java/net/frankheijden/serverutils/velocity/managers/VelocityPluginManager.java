@@ -17,12 +17,13 @@ import com.velocitypowered.api.plugin.PluginManager;
 import com.velocitypowered.api.plugin.meta.PluginDependency;
 import com.velocitypowered.api.proxy.ConsoleCommandSource;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.scheduler.ScheduledTask;
 import java.io.Closeable;
 import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -72,7 +73,11 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
         PluginResults<PluginContainer> loadResults = new PluginResults<>();
 
         for (VelocityPluginDescription description : descriptions) {
-            Path source = description.getFile().toPath();
+            File pluginFile = description.getFile();
+            if (pluginFile == null) {
+                return loadResults.addResult(description.getId(), Result.INVALID_PLUGIN);
+            }
+            Path source = pluginFile.toPath();
             Path baseDirectory = source.getParent();
 
             Object javaPluginLoader = RJavaPluginLoader.newInstance(proxy, baseDirectory);
@@ -262,13 +267,20 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
             Object pluginInstance = pluginInstanceOptional.get();
 
             proxy.getEventManager().unregisterListeners(pluginInstance);
-            for (ScheduledTask task : RVelocityScheduler.getTasksByPlugin(proxy.getScheduler())
-                    .removeAll(pluginInstance)) {
-                task.cancel();
-            }
+            proxy.getEventManager().unregisterListeners(container);
 
-            for (String alias : pluginCommandManager.getPluginCommands().removeAll(pluginId)) {
+            RVelocityScheduler.cancelTasks(proxy.getScheduler(), container, pluginInstance);
+
+            Set<String> aliasesToUnregister = new LinkedHashSet<>(
+                    pluginCommandManager.getPluginCommands().removeAll(pluginId)
+            );
+            aliasesToUnregister.addAll(RVelocityCommandManager.getCommandsForPlugin(
+                    proxy.getCommandManager(), container, pluginInstance
+            ));
+
+            for (String alias : aliasesToUnregister) {
                 proxy.getCommandManager().unregister(alias);
+                proxy.getCommandManager().unregister(alias.toLowerCase(Locale.ROOT));
             }
 
             // Also drops the plugin from Velocity's internal plugins Set, which backs the public

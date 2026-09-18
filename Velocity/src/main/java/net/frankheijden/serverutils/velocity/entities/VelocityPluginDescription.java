@@ -4,11 +4,9 @@ import com.velocitypowered.api.plugin.PluginDescription;
 import com.velocitypowered.api.plugin.meta.PluginDependency;
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import net.frankheijden.serverutils.common.entities.ServerUtilsPluginDescription;
-import net.frankheijden.serverutils.common.entities.exceptions.InvalidPluginDescriptionException;
 
 public class VelocityPluginDescription implements ServerUtilsPluginDescription {
 
@@ -23,10 +21,9 @@ public class VelocityPluginDescription implements ServerUtilsPluginDescription {
     public VelocityPluginDescription(PluginDescription description) {
         this.description = description;
 
-        Optional<Path> sourceOptional = description.getSource();
-        if (!sourceOptional.isPresent()) throw new InvalidPluginDescriptionException("Source path is null");
-
-        this.file = sourceOptional.get().toFile();
+        this.file = description.getSource()
+                .map(Path::toFile)
+                .orElse(null);
         this.author = String.join(", ", description.getAuthors());
         this.dependencies = description.getDependencies().stream()
                 .map(PluginDependency::getId)

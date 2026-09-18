@@ -4,6 +4,9 @@
     "generic": {
       "prefix": "<aqua><bold>ServerUtils <dark_gray><bold>»<reset> <gray>",
       "error": "<red>An error occurred, please check the console!",
+      "no-permission": "<red>I'm sorry, but you do not have permission to perform this command.",
+      "invalid-syntax": "<red>Invalid syntax! Correct syntax: <dark_red>/<syntax></dark_red>",
+      "unknown-command": "<red>Unknown command. Type \"<dark_red>/vsu help</dark_red>\" for help.",
       "not-exists": "<red>Plugin <dark_red><plugin></dark_red> does not exist!",
       "not-enabled": "<red>Plugin <dark_red><plugin></dark_red> is not enabled!",
       "already-loaded": "<red>Plugin <dark_red><plugin></dark_red> is already loaded!",

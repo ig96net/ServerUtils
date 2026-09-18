@@ -19,23 +19,61 @@ public class RVelocityPluginManager {
     /**
      * Retrieves the plugin map. Key is the id of the plugin.
      */
+    @SuppressWarnings("unchecked")
     public static Map<String, PluginContainer> getPlugins(PluginManager manager) {
-        String fieldName = "plugins";
         try {
-            reflection.getClazz().getField(fieldName);
-        } catch (NoSuchFieldException ex) {
-            fieldName = "pluginsById";
+            Object obj = reflection.get(manager, "pluginsById");
+            if (obj instanceof Map) {
+                return (Map<String, PluginContainer>) obj;
+            }
+        } catch (MinecraftReflectionException ignored) {
+            // Ignored: field does not exist in this Velocity version
         }
 
-        return reflection.get(manager, fieldName);
+        try {
+            Object obj = reflection.get(manager, "plugins");
+            if (obj instanceof Map) {
+                return (Map<String, PluginContainer>) obj;
+            }
+        } catch (MinecraftReflectionException ignored) {
+            // Ignored: field does not exist or is not a Map in this Velocity version
+        }
+
+        return null;
     }
 
+    /**
+     * Retrieves the plugin instances map.
+     * @param manager The plugin manager.
+     * @return The plugin instances map, or null if unavailable.
+     */
     public static Map<Object, PluginContainer> getPluginInstances(PluginManager manager) {
-        return reflection.get(manager, "pluginInstances");
+        try {
+            return reflection.get(manager, "pluginInstances");
+        } catch (MinecraftReflectionException ex) {
+            return null;
+        }
     }
 
+    /**
+     * Registers a plugin in Velocity's internal registries.
+     * @param manager The plugin manager.
+     * @param container The plugin container.
+     */
     public static void registerPlugin(PluginManager manager, PluginContainer container) {
-        reflection.invoke(manager, "registerPlugin", ClassObject.of(PluginContainer.class, container));
+        try {
+            reflection.invoke(manager, "registerPlugin", ClassObject.of(PluginContainer.class, container));
+        } catch (MinecraftReflectionException ex) {
+            Map<String, PluginContainer> pluginsMap = getPlugins(manager);
+            if (pluginsMap != null) {
+                pluginsMap.put(container.getDescription().getId(), container);
+            }
+            Map<Object, PluginContainer> pluginInstances = getPluginInstances(manager);
+            if (pluginInstances != null && container.getInstance().isPresent()) {
+                pluginInstances.put(container.getInstance().get(), container);
+            }
+            getIterablePlugins(manager).ifPresent(c -> c.add(container));
+        }
     }
 
     /**
@@ -49,19 +87,27 @@ public class RVelocityPluginManager {
             PluginContainer container,
             Object instance
     ) {
-        getPlugins(manager).remove(pluginId);
-        getPluginInstances(manager).remove(instance);
+        Map<String, PluginContainer> pluginsMap = getPlugins(manager);
+        if (pluginsMap != null) {
+            pluginsMap.remove(pluginId);
+        }
+        Map<Object, PluginContainer> pluginInstances = getPluginInstances(manager);
+        if (pluginInstances != null && instance != null) {
+            pluginInstances.remove(instance);
+        }
         getIterablePlugins(manager).ifPresent(containers -> containers.remove(container));
     }
 
+    @SuppressWarnings("unchecked")
     private static Optional<Collection<PluginContainer>> getIterablePlugins(PluginManager manager) {
         try {
-            return Optional.of(reflection.get(manager, "plugins"));
-        } catch (MinecraftReflectionException ex) {
-            if (ex.getCause() instanceof NoSuchFieldException) {
-                return Optional.empty();
+            Object obj = reflection.get(manager, "plugins");
+            if (obj instanceof Collection) {
+                return Optional.of((Collection<PluginContainer>) obj);
             }
-            throw ex;
+            return Optional.empty();
+        } catch (MinecraftReflectionException ex) {
+            return Optional.empty();
         }
     }
 }

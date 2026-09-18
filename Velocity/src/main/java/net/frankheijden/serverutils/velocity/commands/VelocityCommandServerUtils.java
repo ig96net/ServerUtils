@@ -1,6 +1,7 @@
 package net.frankheijden.serverutils.velocity.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.tree.CommandNode;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.CommandSource;
@@ -58,8 +59,8 @@ public class VelocityCommandServerUtils extends CommandServerUtils<VelocityPlugi
         ServerUtils plugin = ServerUtils.getInstance();
         CommandManager proxyCommandManager = plugin.getProxy().getCommandManager();
         CommandDispatcher<CommandSource> dispatcher = RVelocityCommandManager.getDispatcher(proxyCommandManager);
-
-        builder.key("Name").value(dispatcher.getRoot().getChild(commandName).getName());
+        CommandNode<CommandSource> child = dispatcher.getRoot().getChild(commandName);
+        builder.key("Name").value(child != null ? child.getName() : commandName);
 
         CommandMeta meta = null;
         try {

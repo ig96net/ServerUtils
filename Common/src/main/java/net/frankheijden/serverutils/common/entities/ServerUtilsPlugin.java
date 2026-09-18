@@ -3,6 +3,12 @@ package net.frankheijden.serverutils.common.entities;
 import cloud.commandframework.Command;
 import cloud.commandframework.CommandManager;
 import cloud.commandframework.brigadier.CloudBrigadierManager;
+import cloud.commandframework.exceptions.ArgumentParseException;
+import cloud.commandframework.exceptions.CommandExecutionException;
+import cloud.commandframework.exceptions.InvalidCommandSenderException;
+import cloud.commandframework.exceptions.InvalidSyntaxException;
+import cloud.commandframework.exceptions.NoPermissionException;
+import cloud.commandframework.exceptions.NoSuchCommandException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.frankheijden.serverutils.common.ServerUtilsApp;
 import net.frankheijden.serverutils.common.commands.brigadier.BrigadierHandler;
@@ -28,6 +35,9 @@ import net.frankheijden.serverutils.common.managers.WatchManager;
 import net.frankheijden.serverutils.common.providers.ResourceProvider;
 import net.frankheijden.serverutils.common.providers.ServerUtilsAudienceProvider;
 import net.frankheijden.serverutils.common.utils.FileUtils;
+import net.frankheijden.serverutils.common.utils.Template;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 
 public abstract class ServerUtilsPlugin<P, T, C extends ServerUtilsAudience<S>, S, D extends ServerUtilsPluginDescription> {
 
@@ -187,7 +197,53 @@ public abstract class ServerUtilsPlugin<P, T, C extends ServerUtilsAudience<S>, 
         this.messagesResource = new MessagesResource(this);
         this.messagesResource.load(Arrays.asList(MessageKey.values()));
         this.commandManager = newCommandManager();
+        registerExceptionHandlers(this.commandManager);
         reloadPlugin();
+    }
+
+    /**
+     * Registers default exception handlers for the command manager.
+     * @param manager The command manager.
+     */
+    protected void registerExceptionHandlers(CommandManager<C> manager) {
+        manager.registerExceptionHandler(InvalidSyntaxException.class, (sender, ex) -> {
+            messagesResource.get(MessageKey.GENERIC_INVALID_SYNTAX).sendTo(
+                    sender,
+                    Template.of("syntax", ex.getCorrectSyntax())
+            );
+        });
+
+        manager.registerExceptionHandler(ArgumentParseException.class, (sender, ex) -> {
+            Throwable cause = ex.getCause();
+            if (cause != null && cause.getMessage() != null && !cause.getMessage().isEmpty()) {
+                sender.sendMessage(messagesResource.get(MessageKey.GENERIC_PREFIX).toComponent()
+                        .append(Component.text(cause.getMessage(), NamedTextColor.RED)));
+            } else {
+                messagesResource.get(MessageKey.GENERIC_INVALID_SYNTAX).sendTo(
+                        sender,
+                        Template.of("syntax", ex.getMessage())
+                );
+            }
+        });
+
+        manager.registerExceptionHandler(NoPermissionException.class, (sender, ex) -> {
+            messagesResource.get(MessageKey.GENERIC_NO_PERMISSION).sendTo(sender);
+        });
+
+        manager.registerExceptionHandler(NoSuchCommandException.class, (sender, ex) -> {
+            messagesResource.get(MessageKey.GENERIC_UNKNOWN_COMMAND).sendTo(sender);
+        });
+
+        manager.registerExceptionHandler(InvalidCommandSenderException.class, (sender, ex) -> {
+            sender.sendMessage(messagesResource.get(MessageKey.GENERIC_PREFIX).toComponent()
+                    .append(Component.text("This command cannot be executed from this source.", NamedTextColor.RED)));
+        });
+
+        manager.registerExceptionHandler(CommandExecutionException.class, (sender, ex) -> {
+            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+            getLogger().log(Level.SEVERE, "An error occurred while executing command", cause);
+            messagesResource.get(MessageKey.GENERIC_ERROR).sendTo(sender);
+        });
     }
 
     protected void reloadPlugin() {
