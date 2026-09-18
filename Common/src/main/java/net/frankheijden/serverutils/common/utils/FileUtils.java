@@ -1,17 +1,17 @@
 package net.frankheijden.serverutils.common.utils;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.security.DigestInputStream;
 
 public class FileUtils {
 
@@ -23,7 +23,7 @@ public class FileUtils {
     public static JsonElement parseJson(InputStream in) throws IOException {
         if (in == null) return null;
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            return new JsonParser().parse(reader);
+            return com.google.gson.JsonParser.parseReader(reader);
         }
     }
 
@@ -32,8 +32,14 @@ public class FileUtils {
      */
     public static boolean saveResource(InputStream in, File target) throws IOException {
         if (target.exists()) return false;
-        Files.copy(in, target.toPath());
-        return true;
+        if (in == null) throw new IOException("Resource stream is missing");
+        Path targetPath = target.toPath();
+        Path parent = targetPath.getParent();
+        if (parent != null) Files.createDirectories(parent);
+        try (in) {
+            Files.copy(in, targetPath);
+            return true;
+        }
     }
 
     /**
@@ -43,12 +49,12 @@ public class FileUtils {
      * @return The file's hash
      */
     public static String getHash(Path path) {
-        byte[] digest;
-        try {
-            digest = MessageDigest.getInstance("MD5").digest(Files.readAllBytes(path));
-        } catch (IOException | NoSuchAlgorithmException ex) {
+        try (InputStream stream = Files.newInputStream(path);
+                DigestInputStream digestStream = new DigestInputStream(stream, MessageDigest.getInstance("SHA-256"))) {
+            digestStream.transferTo(OutputStream.nullOutputStream());
+            return StringUtils.bytesToHex(digestStream.getMessageDigest().digest());
+        } catch (IOException | java.security.NoSuchAlgorithmException ex) {
             return null;
         }
-        return StringUtils.bytesToHex(digest);
     }
 }

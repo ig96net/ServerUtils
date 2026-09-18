@@ -7,7 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 
@@ -23,10 +23,12 @@ public class GitHubUtils {
      * Downloads file from a GitHubResponse to a file location.
      */
     public static boolean download(GitHubResponse res, File target) throws IOException {
-        if (res.getRateLimit().isRateLimited()) return false;
-        try (InputStream is = res.getStream()) {
+        try (res) {
+            if (res.getRateLimit().isRateLimited()) return false;
+            InputStream is = res.getStream();
             if (is == null) return false;
             try (
+                    is;
                     ReadableByteChannel rbc = Channels.newChannel(is);
                     FileOutputStream fos = new FileOutputStream(target)
             ) {
@@ -36,17 +38,21 @@ public class GitHubUtils {
         }
     }
 
+    @SuppressWarnings("checkstyle:MissingJavadocMethod")
     public static JsonElement parseJson(GitHubResponse res) throws IOException {
-        return FileUtils.parseJson(res.getStream());
+        try (res) {
+            return FileUtils.parseJson(res.getStream());
+        }
     }
 
     /**
      * Opens a stream to a github url and returns the response.
      */
     public static GitHubResponse stream(String url) throws IOException {
-        HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+        HttpURLConnection conn = (HttpURLConnection) URI.create(url).toURL().openConnection();
         conn.setRequestProperty("User-Agent", USER_AGENT);
         conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
         return GitHubResponse.from(conn);
     }
 }

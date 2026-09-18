@@ -1,15 +1,14 @@
 package net.frankheijden.serverutils.common.managers;
 
 import net.frankheijden.serverutils.common.entities.AbstractTask;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 public abstract class AbstractTaskManager<T> {
 
-    private final List<T> serverTasks;
+    private final Set<T> serverTasks;
     private final Consumer<T> taskCloser;
     private final Map<String, RunningTask> tasks;
 
@@ -20,8 +19,8 @@ public abstract class AbstractTaskManager<T> {
      */
     protected AbstractTaskManager(Consumer<T> taskCloser) {
         this.taskCloser = taskCloser;
-        this.serverTasks = new ArrayList<>();
-        this.tasks = new HashMap<>();
+        this.serverTasks = ConcurrentHashMap.newKeySet();
+        this.tasks = new ConcurrentHashMap<>();
     }
 
     protected abstract T runTaskImpl(Runnable runnable);
@@ -33,7 +32,11 @@ public abstract class AbstractTaskManager<T> {
      * @param delay The delay in ticks (for BungeeCord, this is automatically converted to milliseconds).
      * @return The scheduled task
      */
-    public abstract T runTaskLater(Runnable runnable, long delay);
+    protected abstract T runTaskLaterImpl(Runnable runnable, long delay);
+
+    public T runTaskLater(Runnable runnable, long delay) {
+        return addTask(runTaskLaterImpl(runnable, delay));
+    }
 
     public T runTask(Runnable runnable) {
         return addTask(runTaskImpl(runnable));
@@ -76,7 +79,12 @@ public abstract class AbstractTaskManager<T> {
         return task;
     }
 
-    public abstract void cancelTask(T task);
+    protected abstract void cancelTaskImpl(T task);
+
+    public final void cancelTask(T task) {
+        serverTasks.remove(task);
+        cancelTaskImpl(task);
+    }
 
     /**
      * Cancels a single task by key.
@@ -117,6 +125,7 @@ public abstract class AbstractTaskManager<T> {
 
         public void cancel() {
             cancelTask(task);
+            serverTasks.remove(task);
             abstractTask.cancel();
         }
     }

@@ -1,8 +1,8 @@
 package net.frankheijden.serverutils.common.utils;
 
-import dev.frankheijden.minecraftreflection.Reflection;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.function.Consumer;
@@ -14,10 +14,9 @@ public class ReflectionUtils {
 
     static {
         try {
-            theUnsafeFieldMethodHandle = MethodHandles.lookup().unreflectGetter(Reflection.getAccessibleField(
-                    Unsafe.class,
-                    "theUnsafe"
-            ));
+            Field theUnsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafeField.setAccessible(true);
+            theUnsafeFieldMethodHandle = MethodHandles.lookup().unreflectGetter(theUnsafeField);
         } catch (Throwable th) {
             th.printStackTrace();
         }

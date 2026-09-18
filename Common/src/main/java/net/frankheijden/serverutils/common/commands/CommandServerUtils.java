@@ -32,7 +32,7 @@ import net.frankheijden.serverutils.common.utils.ListComponentBuilder;
 import net.frankheijden.serverutils.common.utils.KeyValueComponentBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.minimessage.Template;
+import net.frankheijden.serverutils.common.utils.Template;
 
 public abstract class CommandServerUtils<U extends ServerUtilsPlugin<P, ?, C, ?, ?>, P, C extends ServerUtilsAudience<?>>
         extends ServerUtilsCommand<U, C> {

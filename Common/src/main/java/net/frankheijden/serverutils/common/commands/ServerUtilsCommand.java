@@ -139,22 +139,7 @@ public abstract class ServerUtilsCommand<U extends ServerUtilsPlugin<?, ?, C, ?,
     }
 
     private String applyPrefix(String str) {
-        final String prefixChar;
-        switch (plugin.getPlatform()) {
-            case BUKKIT:
-                prefixChar = "";
-                break;
-            case BUNGEE:
-                prefixChar = "b";
-                break;
-            case VELOCITY:
-                prefixChar = "v";
-                break;
-            default:
-                throw new IllegalArgumentException("Unknown platform: " + plugin.getPlatform().name());
-        }
-
-        return str.replace("%prefix%", prefixChar);
+        return str.replace("%prefix%", "v");
     }
 
     protected static class CommandElement {

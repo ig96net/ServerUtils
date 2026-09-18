@@ -5,17 +5,16 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.util.Locale;
 import java.util.function.Predicate;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import net.frankheijden.serverutils.common.entities.ServerUtilsPlugin;
 
+@Getter
+@RequiredArgsConstructor
 public class GitHubAsset {
 
     private final String name;
     private final String downloadUrl;
-
-    public GitHubAsset(String name, String downloadUrl) {
-        this.name = name;
-        this.downloadUrl = downloadUrl;
-    }
 
     /**
      * Creates a new GitHubAsset from given release url.
@@ -49,11 +48,4 @@ public class GitHubAsset {
         return null;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public String getDownloadUrl() {
-        return downloadUrl;
-    }
 }

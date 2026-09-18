@@ -9,6 +9,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
@@ -27,8 +28,11 @@ public class JsonConfig implements ServerUtilsConfig {
     private final JsonObject config;
     private File file = null;
 
+    @SuppressWarnings("checkstyle:MissingJavadocMethod")
     public JsonConfig(File file) throws IOException {
-        this.config = gson.fromJson(Files.newBufferedReader(file.toPath()), JsonObject.class);
+        try (Reader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
+            this.config = gson.fromJson(reader, JsonObject.class);
+        }
         this.file = file;
     }
 
@@ -41,19 +45,24 @@ public class JsonConfig implements ServerUtilsConfig {
      */
     public static JsonConfig load(ResourceProvider provider, ServerUtilsPlugin.Platform platform, String resourceName) {
         // Create the platform JsonConfig by merging the platformConfig with the generalConfig
-        JsonConfig generalConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(provider.getRawResource(resourceName + ".json")),
-                JsonObject.class
-        ));
+        JsonConfig generalConfig = new JsonConfig(loadJsonResource(provider, resourceName + ".json"));
 
         String platformResource = platform.name().toLowerCase(Locale.ENGLISH) + '-' + resourceName;
-        JsonConfig platformConfig = new JsonConfig(JsonConfig.gson.fromJson(
-                new InputStreamReader(provider.getRawResource(platformResource + ".json")),
-                JsonObject.class
-        ));
+        JsonConfig platformConfig = new JsonConfig(loadJsonResource(provider, platformResource + ".json"));
         ServerUtilsConfig.addDefaults(platformConfig, generalConfig);
 
         return generalConfig;
+    }
+
+    private static JsonObject loadJsonResource(ResourceProvider provider, String resource) {
+        try (InputStreamReader reader = new InputStreamReader(
+                provider.getRawResource(resource),
+                StandardCharsets.UTF_8
+        )) {
+            return gson.fromJson(reader, JsonObject.class);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to load resource " + resource, ex);
+        }
     }
 
     public JsonObject getConfig() {

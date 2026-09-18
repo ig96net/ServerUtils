@@ -231,11 +231,13 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
             pluginInstances.add(pluginInstance);
         }
 
+        // Wait for the shutdown event to finish firing before continuing: without this the
+        // disable/unload path can race the plugin's own async shutdown handlers.
         RVelocityEventManager.fireForPlugins(
                 proxy.getEventManager(),
                 new ProxyShutdownEvent(),
                 pluginInstances
-        );
+        ).join();
 
         for (PluginContainer container : containers) {
             proxy.getEventManager().fire(new VelocityPluginDisableEvent(container, PluginEvent.Stage.POST));
@@ -269,8 +271,15 @@ public class VelocityPluginManager extends AbstractPluginManager<PluginContainer
                 proxy.getCommandManager().unregister(alias);
             }
 
-            RVelocityPluginManager.getPlugins(proxy.getPluginManager()).remove(pluginId);
-            RVelocityPluginManager.getPluginInstances(proxy.getPluginManager()).remove(pluginInstance);
+            // Also drops the plugin from Velocity's internal plugins Set, which backs the public
+            // PluginManager#getPlugins(): upstream only cleared the two maps, leaving the plugin
+            // listed as still loaded there.
+            RVelocityPluginManager.unregisterPlugin(
+                    proxy.getPluginManager(),
+                    pluginId,
+                    container,
+                    pluginInstance
+            );
 
             List<Closeable> closeables = new ArrayList<>();
 

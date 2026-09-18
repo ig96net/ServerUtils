@@ -14,7 +14,7 @@ import net.frankheijden.serverutils.common.managers.AbstractPluginManager;
 import net.frankheijden.serverutils.common.utils.ListComponentBuilder;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.minimessage.Template;
+import net.frankheijden.serverutils.common.utils.Template;
 
 @SuppressWarnings("LineLength")
 public abstract class CommandPlugins<U extends ServerUtilsPlugin<P, ?, C, ?, D>, P, C extends ServerUtilsAudience<?>, D extends ServerUtilsPluginDescription>

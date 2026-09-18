@@ -78,9 +78,13 @@ public abstract class ServerUtilsPlugin<P, T, C extends ServerUtilsAudience<S>, 
         return commandManager.getCommands();
     }
 
+    @SuppressWarnings("checkstyle:MissingJavadocMethod")
     public void createDataFolderIfNotExists() {
-        if (getDataFolder().exists()) return;
-        getDataFolder().mkdirs();
+        try {
+            Files.createDirectories(getDataFolder().toPath());
+        } catch (IOException ex) {
+            throw new IllegalStateException("Unable to create plugin data folder", ex);
+        }
     }
 
     /**
@@ -191,8 +195,6 @@ public abstract class ServerUtilsPlugin<P, T, C extends ServerUtilsAudience<S>, 
     }
 
     public enum Platform {
-        BUKKIT,
-        BUNGEE,
         VELOCITY,
     }
 }

@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.frankheijden.serverutils.common.config.MessagesResource;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.Template;
+import net.frankheijden.serverutils.common.utils.Template;
 
 public class KeyValueComponentBuilder {
 

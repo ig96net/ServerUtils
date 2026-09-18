@@ -20,7 +20,7 @@ public class VelocityTaskManager extends AbstractTaskManager<ScheduledTask> {
     }
 
     @Override
-    public ScheduledTask runTaskLater(Runnable runnable, long delay) {
+    protected ScheduledTask runTaskLaterImpl(Runnable runnable, long delay) {
         return plugin.getProxy().getScheduler()
                 .buildTask(plugin, runnable)
                 .delay(Duration.ofMillis(delay * 50))
@@ -35,7 +35,7 @@ public class VelocityTaskManager extends AbstractTaskManager<ScheduledTask> {
     }
 
     @Override
-    public void cancelTask(ScheduledTask task) {
+    protected void cancelTaskImpl(ScheduledTask task) {
         task.cancel();
     }
 }

@@ -25,16 +25,21 @@ public class VelocityResourceProvider implements ResourceProvider {
 
     @Override
     public ServerUtilsConfig load(InputStream is) {
-        try {
-            Path tmpFile = Files.createTempFile(null, null);
+        Path tmpFile = null;
+        try (is) {
+            tmpFile = Files.createTempFile("serverutils-", ".toml");
             Files.copy(is, tmpFile, StandardCopyOption.REPLACE_EXISTING);
-
-            VelocityTomlConfig config = new VelocityTomlConfig(tmpFile.toFile());
-            Files.delete(tmpFile);
-
-            return config;
+            return new VelocityTomlConfig(tmpFile.toFile());
         } catch (IOException ex) {
             ex.printStackTrace();
+        } finally {
+            if (tmpFile != null) {
+                try {
+                    Files.deleteIfExists(tmpFile);
+                } catch (IOException ex) {
+                    plugin.getLogger().warn("Unable to delete temporary configuration file {}", tmpFile, ex);
+                }
+            }
         }
         return null;
     }

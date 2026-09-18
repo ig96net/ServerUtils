@@ -1,6 +1,5 @@
 package net.frankheijden.serverutils.common.tasks;
 
-import com.sun.nio.file.SensitivityWatchEventModifier;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.ClosedWatchServiceException;
@@ -12,10 +11,11 @@ import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.frankheijden.serverutils.common.config.MessageKey;
 import net.frankheijden.serverutils.common.entities.AbstractTask;
@@ -28,7 +28,7 @@ import net.frankheijden.serverutils.common.entities.results.PluginResults;
 import net.frankheijden.serverutils.common.entities.results.WatchResult;
 import net.frankheijden.serverutils.common.managers.AbstractPluginManager;
 import net.frankheijden.serverutils.common.utils.FileUtils;
-import net.kyori.adventure.text.minimessage.Template;
+import net.frankheijden.serverutils.common.utils.Template;
 
 public class PluginWatcherTask<P, T> extends AbstractTask {
 
@@ -42,10 +42,10 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
     private final ServerUtilsAudience<?> sender;
     private final Map<String, WatchEntry> fileNameToWatchEntryMap;
     private final Map<String, WatchEntry> pluginIdToWatchEntryMap;
+    private final Map<String, T> debounceTasks;
 
     private final AtomicBoolean run = new AtomicBoolean(true);
     private WatchService watchService;
-    private T task = null;
 
     /**
      * Constructs a new PluginWatcherTask for the specified plugin.
@@ -53,8 +53,9 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
     public PluginWatcherTask(ServerUtilsPlugin<P, T, ?, ?, ?> plugin, ServerUtilsAudience<?> sender, List<P> plugins) {
         this.plugin = plugin;
         this.sender = sender;
-        this.fileNameToWatchEntryMap = new HashMap<>();
-        this.pluginIdToWatchEntryMap = new HashMap<>();
+        this.fileNameToWatchEntryMap = new ConcurrentHashMap<>();
+        this.pluginIdToWatchEntryMap = new ConcurrentHashMap<>();
+        this.debounceTasks = new ConcurrentHashMap<>();
 
         AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
         for (P watchPlugin : plugins) {
@@ -74,11 +75,12 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
 
             AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
             Path basePath = pluginManager.getPluginsFolder().toPath();
-            basePath.register(watchService, EVENTS, SensitivityWatchEventModifier.HIGH);
+            basePath.register(watchService, EVENTS);
 
             while (run.get()) {
                 WatchKey key = watchService.take();
                 for (WatchEvent<?> event : key.pollEvents()) {
+                    if (event.kind() == StandardWatchEventKinds.OVERFLOW) continue;
                     Path path = basePath.resolve((Path) event.context());
 
                     if (!Files.isDirectory(path)) {
@@ -132,8 +134,9 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
     }
 
     private void checkWatchEntry(WatchEntry entry, String fileName) {
-        if (task != null) {
-            plugin.getTaskManager().cancelTask(task);
+        T previousTask = debounceTasks.remove(entry.pluginId);
+        if (previousTask != null) {
+            plugin.getTaskManager().cancelTask(previousTask);
         }
 
         AbstractPluginManager<P, ?> pluginManager = plugin.getPluginManager();
@@ -147,15 +150,15 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
         }
 
         String previousHash = entry.hash;
-        long previousTimestamp = entry.timestamp;
         entry.update(fileOptional.get());
 
-        task = plugin.getTaskManager().runTaskLater(() -> {
-            if (entry.hash.equals(previousHash) || previousTimestamp < entry.timestamp - 1000L) {
+        T task = plugin.getTaskManager().runTaskLater(() -> {
+            debounceTasks.remove(entry.pluginId);
+            if (!Objects.equals(entry.hash, previousHash)) {
                 send(WatchResult.CHANGE);
 
                 List<P> plugins = new ArrayList<>(fileNameToWatchEntryMap.size());
-                Map<String, WatchEntry> retainedWatchEntries = new HashMap<>();
+                Map<String, WatchEntry> retainedWatchEntries = new ConcurrentHashMap<>();
                 for (WatchEntry oldEntry : fileNameToWatchEntryMap.values()) {
                     Optional<P> pluginOptional = pluginManager.getPlugin(oldEntry.pluginId);
                     if (!pluginOptional.isPresent()) continue;
@@ -181,6 +184,7 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
                 }
             }
         }, 10L);
+        debounceTasks.put(entry.pluginId, task);
     }
 
     private void send(WatchResult result, Template... templates) {
@@ -193,8 +197,14 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
     @Override
     public void cancel() {
         run.set(false);
+        for (T debounceTask : debounceTasks.values()) {
+            plugin.getTaskManager().cancelTask(debounceTask);
+        }
+        debounceTasks.clear();
+        WatchService service = watchService;
+        if (service == null) return;
         try {
-            watchService.close();
+            service.close();
         } catch (IOException ex) {
             ex.printStackTrace();
         }
@@ -204,7 +214,6 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
 
         private final String pluginId;
         private String hash = null;
-        private long timestamp = 0L;
 
         public WatchEntry(String pluginId) {
             this.pluginId = pluginId;
@@ -212,7 +221,6 @@ public class PluginWatcherTask<P, T> extends AbstractTask {
 
         public void update(File file) {
             this.hash = FileUtils.getHash(file.toPath());
-            this.timestamp = System.currentTimeMillis();
         }
     }
 }

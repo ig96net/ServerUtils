@@ -25,7 +25,7 @@ import net.frankheijden.serverutils.common.utils.GitHubUtils;
 import net.frankheijden.serverutils.common.utils.VersionUtils;
 import net.frankheijden.serverutilsupdater.common.Updater;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.minimessage.Template;
+import net.frankheijden.serverutils.common.utils.Template;
 
 public class UpdateCheckerTask<U extends ServerUtilsPlugin<P, ?, ?, ?, ?>, P> implements Runnable {
 
