@@ -18,14 +18,7 @@ import net.frankheijden.serverutils.velocity.reflection.RVelocityCommandManager;
 import org.bstats.velocity.Metrics;
 import org.slf4j.Logger;
 
-@Plugin(
-        id = "serverutils",
-        name = "ServerUtils",
-        version = "3.6.0",
-        description = "A server utility",
-        url = "https://github.com/FrankHeijden/ServerUtils",
-        authors = "FrankHeijden"
-)
+@Plugin(id = "serverutils", name = "ServerUtils", version = "3.6.0", description = "A server utility", url = "https://github.com/FrankHeijden/ServerUtils", authors = "FrankHeijden")
 public class ServerUtils {
 
     private static ServerUtils instance;
@@ -69,9 +62,7 @@ public class ServerUtils {
                 getClass().getClassLoader(),
                 (container, meta) -> pluginCommandManager.getPluginCommands().putAll(
                         container.getDescription().getId(),
-                        meta.getAliases()
-                )
-        );
+                        meta.getAliases()));
     }
 
     /**
@@ -118,7 +109,16 @@ public class ServerUtils {
         return plugin;
     }
 
+    /**
+     * Gets the plugin container for ServerUtils.
+     *
+     * @return The plugin container.
+     */
     public PluginContainer getPluginContainer() {
+        if (pluginContainer == null && proxy != null) {
+            pluginContainer = proxy.getPluginManager().fromInstance(this)
+                    .orElseGet(() -> proxy.getPluginManager().getPlugin("serverutils").orElse(null));
+        }
         return pluginContainer;
     }
 

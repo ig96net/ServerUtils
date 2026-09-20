@@ -44,7 +44,6 @@ public class RVelocityCommandManager {
      * @param pluginInstance The plugin instance.
      * @return Set of command aliases.
      */
-    @SuppressWarnings("unchecked")
     public static Set<String> getCommandsForPlugin(
             CommandManager commandManager,
             PluginContainer container,
@@ -169,7 +168,7 @@ public class RVelocityCommandManager {
     /**
      * Proxies the registrars.
      */
-    @SuppressWarnings("rawtypes")
+    @SuppressWarnings({"rawtypes", "removal"})
     public static void proxyRegistrars(
             ProxyServer proxy,
             ClassLoader loader,
@@ -257,8 +256,21 @@ public class RVelocityCommandManager {
                 String className = elements[i].getClassName();
                 if (className.startsWith("java.") || className.startsWith("jdk.")
                         || className.startsWith("com.velocitypowered.")
-                        || className.startsWith("net.frankheijden.serverutils.")) {
+                        || className.startsWith("cloud.commandframework.")
+                        || className.startsWith("net.frankheijden.serverutils.velocity.reflection.")) {
                     continue;
+                }
+
+                if (className.startsWith("net.frankheijden.serverutils.")) {
+                    PluginContainer serverUtilsContainer = ServerUtils.getInstance() != null
+                            ? ServerUtils.getInstance().getPluginContainer() : null;
+                    if (serverUtilsContainer == null) {
+                        serverUtilsContainer = proxy.getPluginManager().getPlugin("serverutils").orElse(null);
+                    }
+                    if (serverUtilsContainer != null) {
+                        registrationConsumer.accept(serverUtilsContainer, commandMeta);
+                        return;
+                    }
                 }
 
                 for (PluginContainer container : proxy.getPluginManager().getPlugins()) {
