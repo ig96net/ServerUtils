@@ -2,6 +2,7 @@
 .vs/
 .gradle/
 build/
+bin/
 jars/
 *.class
 *.jar
